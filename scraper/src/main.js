@@ -6,8 +6,8 @@ const path = require('path');
 async function main() {
     // Default IDs for testing (Gangnam Alver Cafe)
     // You can pass IDs via command line: node src/main.js <naverId> <kakaoId>
-    const naverId = process.argv[2] || '37296584'; // Example ID
-    const kakaoId = process.argv[3] || '26338954'; // Example ID
+    const naverId = process.argv[2] || '34016603'; // Example ID: Gangnam Alver Cafe
+    const kakaoId = process.argv[3] || '26338954'; // Example ID: Gangnam Alver Cafe
 
     console.log(`[MAIN] Starting scraping for Naver ID: ${naverId}, Kakao ID: ${kakaoId}`);
 

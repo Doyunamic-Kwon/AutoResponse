@@ -3,127 +3,136 @@ const { createBrowser } = require('../core/browser');
 class NaverScraper {
     constructor(restaurantId) {
         this.restaurantId = restaurantId;
+        // Revert to PC Map URL as it's more stable for direct scraping
         this.baseUrl = `https://pcmap.place.naver.com/restaurant/${restaurantId}/review/visitor`;
     }
 
     async run() {
-        console.log(`[NAVER] Starting scrape for ${this.restaurantId}...`);
+        console.log(`[NAVER] Starting scrape for ${this.restaurantId} (DOM Mode)...`);
         const { browser, context, page } = await createBrowser();
         const reviews = [];
 
         try {
             await page.goto(this.baseUrl, { waitUntil: 'load', timeout: 30000 });
 
-            // Wait for reviews to load
-            const frame = page.frameLocator('iframe#entryIframe'); // Try common iframe selector or adjust
+            // Wait for list to appear
+            // Try explicit wait for the review list container
+            try {
+                await page.waitForSelector('ul', { timeout: 10000 });
+            } catch (e) {
+                console.log("[NAVER] Timeout waiting for ul, might be empty or different structure.");
+            }
 
-            // Actually, naver pcmap usually doesn't use iframe for the *whole* page, 
-            // but the review list might be inside a specific container or simply on the main page depending on the exact URL.
-            // Let's assume the URL provided is direct. If not, we handle iframe.
+            // aggressive scrolling to load more reviews
+            console.log("[NAVER] Scrolling...");
+            for (let i = 0; i < 5; i++) {
+                await page.keyboard.press('End');
+                await page.waitForTimeout(1000);
 
-            // Use 'page' directly first as pcmap.place.naver.com usually renders directly. 
-            // If it fails, check frames.
-
-            // Wait for review list container
-            await page.waitForSelector('li.yeusu', { timeout: 10000 }).catch(() => console.log("Direct selector timeout, checking iframes..."));
-
-            // Naver Place often changes class names dynamicallly. 
-            // Strategy: Look for specific text patterns or stable attributes if classes are obfuscated.
-            // However, 'li.yeusu' or similar structure is common. Let's try to capture by text content if class fails.
-
-            // Scroll down a few times to trigger lazy loading
-            for (let i = 0; i < 3; i++) {
-                await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-                await page.waitForTimeout(1000 + Math.random() * 1000); // Random wait
-
-                // Click '더보기' if exists
-                const moreButton = await page.$('a.fvwqf'); // Example class, needs verifying. 
-                if (moreButton) {
-                    await moreButton.click();
+                // Click '더보기' (More) if found.
+                // Class 'fvwqf' is common for "More" button on Naver PC
+                const moreBtn = await page.$('a.fvwqf');
+                if (moreBtn) {
+                    await moreBtn.click();
                     await page.waitForTimeout(1000);
                 }
             }
 
-            // Extract data
-            const reviewElements = await page.$$('li.yeusu'); // Adjust selector as needed based on inspection
+            // Advanced Parsing Strategy: Search all frames
+            let targetFrame = page;
+            const frames = page.frames();
+            console.log(`[NAVER] Use Frame Search. Total frames: ${frames.length}`);
 
-            // If no elements found with class, try finding by structure
-            // Use a more generic strategy if specific class names fail
-
-            // Debugging: Save screenshot and HTML
-            await page.screenshot({ path: `debug_naver_${this.restaurantId}.png` });
-            const content = await page.content();
-            await require('fs-extra').writeFile(`debug_naver_${this.restaurantId}.html`, content);
-            console.log(`[NAVER] Frame count: ${page.frames().length}`);
-
-            // Strategy Change: Intercept GraphQL API calls 
-            // Naver Place uses GraphQL for fetching reviews. Let's listen for them.
-
-            page.on('response', async (response) => {
-                const url = response.url();
-                if (url.includes('graphql') && response.status() === 200) {
-                    try {
-                        const json = await response.json();
-                        // Check if this is a review query result
-                        // Usually deep inside data.visitorReviews
-                        if (json.data && json.data.visitorReviews && json.data.visitorReviews.items) {
-                            console.log(`[NAVER] Intercepted GraphQL Reviews: ${json.data.visitorReviews.items.length}`);
-                            json.data.visitorReviews.items.forEach(item => {
-                                reviews.push({
-                                    source: 'naver',
-                                    id: item.id,
-                                    rating: item.rating,
-                                    content: item.body || item.highlightedContent,
-                                    date: item.visitedDate || item.created,
-                                    reviewer: item.author ? item.author.nickname : 'Anonymous',
-                                    images: item.images ? item.images.map(img => img.url) : []
-                                });
-                            });
-                        }
-                    } catch (e) {
-                        // Not JSON or irrelevant
-                    }
+            // Try to find the frame that contains reviews
+            for (const frame of frames) {
+                const text = await frame.content();
+                if (text.includes('방문자 리뷰') && text.includes('인증')) {
+                    console.log(`[NAVER] Found target frame: ${frame.url()}`);
+                    targetFrame = frame;
+                    break;
                 }
-            });
-
-            await page.goto(this.baseUrl, { waitUntil: 'networkidle' });
-
-            // Trigger more reviews by clicking '더보기' (More) button if available
-            // This will fire more GraphQL requests which we will intercept
-
-            // Selector for 'More' button might vary. A generic approach:
-            // Look for a button/link at the bottom of the list with text '더보기'
-
-            try {
-                // Initial wait for dynamic content
-                await page.waitForTimeout(2000);
-
-                let attempt = 0;
-                while (attempt < 3) {
-                    // Click generic 'More' button (needs specific selector or text match)
-                    // Using text match is safer:
-                    const moreBtn = await page.getByRole('button', { name: /더보기|접기/ }).first();
-
-                    if (await moreBtn.isVisible()) {
-                        await moreBtn.click();
-                        await page.waitForTimeout(1000 + Math.random() * 1000);
-                    } else {
-                        // Scroll to bottom to trigger potential infinite scroll
-                        await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-                        await page.waitForTimeout(1000);
-                    }
-                    attempt++;
-                }
-            } catch (e) {
-                console.log(`[NAVER] Auto-scroll/Click finished: ${e.message}`);
             }
 
-            console.log(`[NAVER] Extracted ${reviews.length} reviews via GraphQL Interception.`);
+            // aggressive scrolling on target frame
+            console.log("[NAVER] Scrolling target frame...");
+            for (let i = 0; i < 5; i++) {
+                await targetFrame.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+                await page.waitForTimeout(1000);
+            }
 
-            console.log(`[NAVER] Extracted ${reviews.length} reviews.`);
+            // Universal Text Mining Strategy V2: Span Mining
+            // Naver uses random class names, so we grab ALL spans and filter by heuristic.
+            const allSpans = await targetFrame.$$('span');
+            console.log(`[NAVER] Mining ${allSpans.length} spans...`);
+
+            let currentReview = {};
+
+            for (const span of allSpans) {
+                try {
+                    const text = (await span.innerText()).trim();
+                    if (!text) continue;
+
+                    // 1. Detect Date -> Start of new review potential
+                    // Matches "24.10.25.금" or "2024.10.25"
+                    const dateMatch = text.match(/([0-9]{2,4}\.[0-9]{1,2}\.[0-9]{1,2})/);
+
+                    if (dateMatch) {
+                        // If we have a pending review with content, push it
+                        if (currentReview.content && currentReview.content.length > 5) {
+                            reviews.push(currentReview);
+                        }
+                        // Start new review
+                        currentReview = {
+                            source: 'naver',
+                            date: dateMatch[0],
+                            content: ''
+                        };
+                    } else if (currentReview.date) {
+                        // We are inside a review block context
+                        // Filter out unrelated short keywords like "방문", "인증", "공유"
+
+                        const isKeyword = /^(방문|인증|공유|신고|반응|여행|리뷰|사진|첫)$/.test(text) || text.includes('개의 리뷰가 더 있습니다');
+                        const isMenu = text.includes("원") && text.length < 15; // Price/Menu
+
+                        if (text.includes('대기 시간')) {
+                            currentReview.waiting = text.replace('대기 시간', '').trim();
+                        } else if (text.match(/^(연인|배우자|아이|부모님|친구|혼자|비즈니스)/)) {
+                            currentReview.purpose = text;
+                        } else if (text.includes('방문')) {
+                            // Extract visit time and booking info
+                            if (text.match(/(아침|점심|저녁|오후|오전)에 방문/)) {
+                                currentReview.visitTime = text.match(/(아침|점심|저녁|오후|오전)에 방문/)[0];
+                            }
+                            if (text.includes('예약')) {
+                                currentReview.booking = text.includes('예약 없이') ? '예약 없이 이용' : '예약 후 이용';
+                            }
+                        } else if (text.includes('리뷰') && (text.includes('영수증') || text.includes('결제내역'))) {
+                            currentReview.reviewType = text.includes('영수증') ? '영수증 리뷰' : '결제내역 리뷰';
+                        } else if (!isKeyword && !isMenu && text.length > 5) {
+                            // This heavily implies it's the review content
+                            // Append if multiple lines are split across spans
+                            currentReview.content = (currentReview.content || '') + ' ' + text;
+                        }
+                    }
+                } catch (e) {
+                    // stale element
+                }
+            }
+
+            // Push the last one
+            if (currentReview.content && currentReview.content.length > 5) {
+                reviews.push(currentReview);
+            }
+
+            console.log(`[NAVER] Extracted ${reviews.length} reviews via DOM Scraping.`);
 
         } catch (error) {
             console.error(`[NAVER] Error: ${error.message}`);
+            try {
+                await page.screenshot({ path: `error_naver_${this.restaurantId}.png` });
+            } catch (err) {
+                // ignore screenshot error
+            }
         } finally {
             await browser.close();
         }
