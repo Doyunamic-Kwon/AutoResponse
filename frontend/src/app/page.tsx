@@ -125,7 +125,7 @@ export default function Home() {
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setSelectedTab(tab.id as any)}
+                onClick={() => setSelectedTab(tab.id as 'naver' | 'kakao')}
                 className={`px-8 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${selectedTab === tab.id
                   ? `${tab.activeColor} shadow-lg shadow-indigo-500/10`
                   : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100/50 dark:hover:bg-slate-800/50'}`}
