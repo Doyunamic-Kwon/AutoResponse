@@ -1,26 +1,27 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=Inter:wght@400;500;600;700&family=DM+Serif+Display&display=swap');
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --background: #f8fafc;
-  --foreground: #0f172a;
-  --primary: #2563eb;
-  --secondary: #64748b;
-  --accent: #3b82f6;
-  --card: #ffffff;
-  --border: #e2e8f0;
+  --background: #fffdfa;
+  --foreground: #2d2a26;
+  --primary: #4f46e5;
+  --primary-light: #eef2ff;
+  --secondary: #7c746e;
+  --accent: #f59e0b;
+  --card: rgba(255, 255, 255, 0.85);
+  --border: #f1f0ee;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #020617;
-    --foreground: #f8fafc;
-    --primary: #60a5fa;
-    --secondary: #94a3b8;
-    --accent: #0f172a;
-    --card: #0f172a;
-    --border: #1e293b;
+    --background: #0c0b0a;
+    --foreground: #f4f1ee;
+    --primary: #818cf8;
+    --primary-light: #1e1b4b;
+    --secondary: #a8a29e;
+    --accent: #fbbf24;
+    --card: rgba(24, 24, 27, 0.85);
+    --border: #292524;
   }
 }
 
@@ -28,9 +29,10 @@ body {
   color: var(--foreground);
   background: var(--background);
   background-image:
-    radial-gradient(at 0% 0%, rgba(37, 99, 235, 0.05) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(147, 51, 234, 0.05) 0px, transparent 50%);
+    radial-gradient(at 0% 0%, rgba(245, 158, 11, 0.08) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(79, 70, 229, 0.08) 0px, transparent 50%);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -39,4 +41,20 @@ h2,
 h3,
 .font-outfit {
   font-family: 'Outfit', sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.glass {
+  background: var(--card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+}
+
+.card-shadow {
+  box-shadow: 0 20px 40px -20px rgba(0, 0, 0, 0.05);
+}
+
+.accent-font {
+  font-family: 'DM Serif Display', serif;
 }
