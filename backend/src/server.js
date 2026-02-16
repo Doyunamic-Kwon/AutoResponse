@@ -95,6 +95,10 @@ app.post('/api/generate-reply', async (req, res) => {
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`[BACKEND] Server is running on http://localhost:${PORT}`);
-});
+if (process.env.NODE_ENV !== 'test') {
+    app.listen(PORT, () => {
+        console.log(`[BACKEND] Server is running on http://localhost:${PORT}`);
+    });
+}
+
+module.exports = app;

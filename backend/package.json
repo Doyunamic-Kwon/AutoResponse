@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node src/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest --detectOpenHandles"
   },
   "keywords": [],
   "author": "",
@@ -17,5 +17,9 @@
     "fs-extra": "^11.3.3",
     "morgan": "^1.10.1",
     "openai": "^6.22.0"
+  },
+  "devDependencies": {
+    "jest": "^30.2.0",
+    "supertest": "^7.2.2"
   }
 }
