@@ -50,14 +50,27 @@ app.get('/api/reviews', async (req, res) => {
 
 // AI Reply Generation Endpoint
 app.post('/api/generate-reply', async (req, res) => {
-    const { content, source, reviewer } = req.body;
+    const { content, source, reviewer, waiting, purpose, visitTime, booking, reviewType } = req.body;
 
-    if (!content) {
-        return res.status(400).json({ error: "Review content is required" });
+    if (!content && !purpose) {
+        return res.status(400).json({ error: "Review content or context is required" });
     }
 
     try {
-        const persona = "친절하고 세심한 카페 사장님. 따뜻한 말투를 사용하며, 손님의 리뷰 내용 중 구체적인 부분(맛, 서비스, 분위기 등)을 언급하며 감사 인사를 전함. 마지막에는 꼭 재방문을 바라는 멘트를 넣음.";
+        const persona = "친절하고 세심한 카페 사장님. 따뜻한 말투를 사용하며, 손님의 리뷰 내용 중 구체적인 부분(맛, 서비스, 분위기 등)을 언급하며 감사 인사를 전함. 특히 손님의 방문 상황(시간대, 누구와 왔는지, 대기 여부 등)을 파악하여 맞춤형으로 응대함. 마지막에는 꼭 재방문을 바라는 멘트를 넣음.";
+
+        const contextInfo = [];
+        if (visitTime) contextInfo.push(`방문 시간: ${visitTime}`);
+        if (booking) contextInfo.push(`예약 여부: ${booking}`);
+        if (waiting) contextInfo.push(`대기 상황: ${waiting}`);
+        if (purpose) contextInfo.push(`방문 목적: ${purpose}`);
+        if (reviewType) contextInfo.push(`리뷰 유형: ${reviewType}`);
+
+        let userMessageContent = `플랫폼: ${source}\n작성자: ${reviewer || '고객님'}`;
+        if (contextInfo.length > 0) {
+            userMessageContent += `\n상황 정보: ${contextInfo.join(', ')}`;
+        }
+        userMessageContent += `\n리뷰 내용: ${content || '내용 없음 (별점/키워드 리뷰)'}`;
 
         const response = await openai.chat.completions.create({
             model: "gpt-4o",
@@ -68,7 +81,7 @@ app.post('/api/generate-reply', async (req, res) => {
                 },
                 {
                     role: "user",
-                    content: `플랫폼: ${source}\n작성자: ${reviewer || '고객님'}\n리뷰 내용: ${content}`
+                    content: userMessageContent
                 }
             ],
             temperature: 0.7,

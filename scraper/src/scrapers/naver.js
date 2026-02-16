@@ -106,7 +106,7 @@ class NaverScraper {
                             if (text.includes('예약')) {
                                 currentReview.booking = text.includes('예약 없이') ? '예약 없이 이용' : '예약 후 이용';
                             }
-                        } else if (text.includes('리뷰') && (text.includes('영수증') || text.includes('결제내역'))) {
+                        } else if (text.includes('영수증') || text.includes('결제내역')) {
                             currentReview.reviewType = text.includes('영수증') ? '영수증 리뷰' : '결제내역 리뷰';
                         } else if (!isKeyword && !isMenu && text.length > 5) {
                             // This heavily implies it's the review content
