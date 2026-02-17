@@ -1,6 +1,21 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import {
+  Calendar,
+  Tag,
+  Zap,
+  CheckCircle2,
+  Clock,
+  MessageSquare,
+  ArrowRight,
+  ExternalLink,
+  Copy
+} from "lucide-react";
 
 interface Review {
   source: 'naver' | 'kakao';
@@ -15,28 +30,13 @@ interface Review {
   reviewType?: string;
 }
 
-// Custom SVG Icons
-const Icons = {
-  Date: () => (
-    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-  ),
-  User: () => (
-    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-  ),
-  Tag: () => (
-    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
-  ),
-  AI: () => (
-    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-  )
-};
-
 export default function Home() {
   const [reviews, setReviews] = useState<{ naver: Review[], kakao: Review[] }>({ naver: [], kakao: [] });
   const [loading, setLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState<'naver' | 'kakao'>('naver');
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [generatedReplies, setGeneratedReplies] = useState<{ [key: string]: string }>({});
+  const [replyStyle, setReplyStyle] = useState<'warm' | 'professional' | 'energetic'>('warm');
 
   const naverReviewUrl = "https://pcmap.place.naver.com/restaurant/34016603/review/visitor";
   const kakaoReviewUrl = "https://place.map.kakao.com/26338954";
@@ -66,7 +66,7 @@ export default function Home() {
       const res = await fetch('http://localhost:4000/api/generate-reply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(review)
+        body: JSON.stringify({ ...review, style: replyStyle })
       });
       const data = await res.json();
       if (data.reply) {
@@ -86,192 +86,227 @@ export default function Home() {
   const currentReviews = selectedTab === 'naver' ? reviews.naver : reviews.kakao;
 
   return (
-    <div className="min-h-screen p-4 md:p-12 transition-colors duration-500">
-      <header className="max-w-5xl mx-auto mb-16 text-center">
-        <div className="inline-block px-4 py-1.5 mb-4 text-[11px] font-bold tracking-widest uppercase bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full">
+    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/10 transition-colors duration-500 pb-20">
+      <header className="container max-w-5xl mx-auto pt-16 pb-12 text-center animate-in fade-in slide-in-from-top-4 duration-1000">
+        <div className="inline-flex items-center px-4 py-1.5 mb-6 text-[10px] font-bold tracking-widest uppercase bg-primary/5 text-primary border border-primary/10 rounded-full">
+          <Zap className="w-3 h-3 mr-2" />
           Intelligent Reputation Care
         </div>
-        <h1 className="text-5xl md:text-7xl font-bold mb-6 accent-font tracking-tight text-slate-800 dark:text-slate-100">
-          AutoResponse<span className="text-indigo-500">.</span>
+        <h1 className="text-6xl md:text-8xl font-black mb-6 font-outfit tracking-tighter text-foreground">
+          AutoResponse<span className="text-secondary">.</span>
         </h1>
-        <p className="text-slate-500 dark:text-slate-400 text-lg md:text-xl font-medium max-w-2xl mx-auto leading-relaxed">
-          사장님의 소중한 브랜드를 지키는 가장 섬세한 방법. <br className="hidden md:block" />
-          리뷰 분석부터 AI 맞춤 답글까지 한 번에 관리하세요.
+        <p className="text-muted-foreground text-xl md:text-2xl font-medium max-w-2xl mx-auto leading-relaxed">
+          The most sophisticated way to protect your brand. <br className="hidden md:block" />
+          From analytics to AI replies, all in one place.
         </p>
       </header>
 
-      <main className="max-w-5xl mx-auto">
-        {/* Statistics Board */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
+      <main className="container max-w-5xl mx-auto px-4">
+        {/* Dashboard Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16">
           {[
-            { label: '네이버 리뷰', value: reviews.naver.length, color: 'text-emerald-600' },
-            { label: '카카오 리뷰', value: reviews.kakao.length, color: 'text-amber-500' },
-            { label: '평균 평점', value: '4.8', color: 'text-rose-500' },
-            { label: 'AI 응답률', value: '92%', color: 'text-indigo-500' },
+            { label: 'Naver Reviews', value: reviews.naver.length, icon: MessageSquare, color: 'text-emerald-500' },
+            { label: 'Kakao Reviews', value: reviews.kakao.length, icon: MessageSquare, color: 'text-amber-500' },
+            { label: 'Avg Rating', value: '4.8', icon: CheckCircle2, color: 'text-primary' },
+            { label: 'AI Match Rate', value: '92%', icon: Zap, color: 'text-secondary' },
           ].map((stat, i) => (
-            <div key={i} className="glass p-6 rounded-3xl card-shadow transition-transform hover:scale-[1.02]">
-              <h3 className="text-slate-400 dark:text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-2">{stat.label}</h3>
-              <p className={`text-2xl md:text-3xl font-black font-outfit ${stat.color}`}>{stat.value}</p>
-            </div>
+            <Card key={i} className="glass border-none shadow-none card-shadow group hover:-translate-y-1 transition-all duration-300">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between mb-2">
+                  <stat.icon className="w-4 h-4 text-muted-foreground" />
+                </div>
+                <CardDescription className="text-[10px] font-bold uppercase tracking-wider">{stat.label}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className={`text-3xl font-black font-outfit ${stat.color}`}>{stat.value}</p>
+              </CardContent>
+            </Card>
           ))}
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex justify-center mb-10">
-          <div className="glass p-1.5 rounded-2xl flex space-x-1 shadow-sm">
-            {[
-              { id: 'naver', label: 'Naver Place', activeColor: 'bg-emerald-500 text-white' },
-              { id: 'kakao', label: 'Kakao Map', activeColor: 'bg-amber-500 text-white' },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setSelectedTab(tab.id as 'naver' | 'kakao')}
-                className={`px-8 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${selectedTab === tab.id
-                  ? `${tab.activeColor} shadow-lg shadow-indigo-500/10`
-                  : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100/50 dark:hover:bg-slate-800/50'}`}
-              >
-                {tab.label}
-              </button>
-            ))}
+        {/* Content Section */}
+        <Tabs defaultValue="naver" onValueChange={(val) => setSelectedTab(val as 'naver' | 'kakao')} className="w-full">
+          <div className="flex flex-col items-center gap-6 mb-12">
+            <TabsList className="glass h-12 p-1 rounded-2xl border-none shadow-sm">
+              <TabsTrigger value="naver" className="px-10 rounded-xl font-bold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all text-sm">Naver Place</TabsTrigger>
+              <TabsTrigger value="kakao" className="px-10 rounded-xl font-bold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all text-sm">Kakao Map</TabsTrigger>
+            </TabsList>
+
+            <div className="flex items-center gap-2 p-1 bg-muted/30 rounded-2xl border border-primary/5">
+              {(['warm', 'professional', 'energetic'] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setReplyStyle(s)}
+                  className={`px-6 py-2 rounded-xl text-xs font-black transition-all duration-300 ${replyStyle === s
+                    ? "bg-white text-primary shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                    }`}
+                >
+                  {s.toUpperCase()}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* Review Stream */}
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-32 space-y-4">
-            <div className="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
-            <p className="text-slate-400 font-medium animate-pulse">리뷰 데이터를 정제하고 있습니다...</p>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {currentReviews.length > 0 ? (
-              currentReviews.map((review, idx) => (
-                <div key={idx} className="glass p-8 rounded-[2.5rem] card-shadow group transition-all duration-500 hover:border-indigo-200 dark:hover:border-indigo-800 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 blur-[80px] -z-10 group-hover:bg-indigo-500/10 transition-all"></div>
+          <TabsContent value={selectedTab} className="mt-0 focus-visible:outline-none focus-visible:ring-0">
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-40 space-y-4">
+                <div className="w-10 h-10 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+                <p className="text-muted-foreground text-sm font-bold tracking-widest uppercase animate-pulse">Syncing Intelligence...</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {currentReviews.length > 0 ? (
+                  currentReviews.map((review, idx) => (
+                    <Card key={idx} className="glass border-none shadow-none card-shadow rounded-[2.5rem] p-6 md:p-10 hover:-translate-y-1 transition-all duration-500 animate-in fade-in slide-in-from-bottom-6 group">
+                      <div className="flex flex-col md:flex-row gap-8 lg:gap-12">
+                        <div className="flex-1">
+                          {/* Rich Metadata Header */}
+                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-2xl bg-primary/5 flex items-center justify-center text-primary border border-primary/10 shadow-inner group-hover:bg-primary/10 transition-colors duration-500">
+                                <span className="text-lg font-black font-outfit">{review.reviewer?.[0]?.toUpperCase() || 'U'}</span>
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <h3 className="font-black text-lg tracking-tight text-foreground">{review.reviewer || 'Anonymous Member'}</h3>
+                                  <Badge className="bg-primary/90 hover:bg-primary text-[9px] font-black h-4 px-1.5 rounded-sm">VERIFIED</Badge>
+                                </div>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <div className="flex items-center gap-0.5">
+                                    {[...Array(5)].map((_, i) => (
+                                      <svg
+                                        key={i}
+                                        className={`w-3.5 h-3.5 ${i < (review.rating || 5) ? "fill-secondary text-secondary" : "fill-muted text-muted"}`}
+                                        viewBox="0 0 20 20"
+                                      >
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                      </svg>
+                                    ))}
+                                  </div>
+                                  <span className="text-[11px] text-muted-foreground font-bold uppercase tracking-wider ml-1">{review.date}</span>
+                                </div>
+                              </div>
+                            </div>
 
-                  <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
-                    <div className="flex-1">
-                      {/* Meta Information Badges */}
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        <span className="flex items-center space-x-1.5 px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[10px] font-bold rounded-full uppercase tracking-tighter">
-                          <Icons.Tag />
-                          <span>{review.source}</span>
-                        </span>
-                        <span className="flex items-center space-x-1.5 px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold rounded-full">
-                          <Icons.Date />
-                          <span>{review.date}</span>
-                        </span>
-                        {review.visitTime && <span className="px-3 py-1 bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-[10px] font-bold rounded-full">{review.visitTime}</span>}
-                        {review.booking && <span className="px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold rounded-full">{review.booking}</span>}
-                        {review.waiting && <span className="px-3 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold rounded-full">대기: {review.waiting}</span>}
-                        {review.purpose && <span className="px-3 py-1 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 text-[10px] font-bold rounded-full">{review.purpose}</span>}
-                      </div>
-
-                      <div className="mb-4">
-                        {review.reviewer && (
-                          <div className="flex items-center space-x-2 text-slate-800 dark:text-slate-100 mb-1">
-                            <span className="text-sm font-black">{review.reviewer}</span>
-                            <span className="text-[10px] text-slate-400">Verfied Visitor</span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {review.source && (
+                                <Badge variant="outline" className="text-[10px] font-black border-primary/10 text-primary py-1 px-3 bg-primary/[0.02]">
+                                  {review.source.toUpperCase()}
+                                </Badge>
+                              )}
+                              {review.purpose && (
+                                <Badge variant="secondary" className="bg-[#F1D302]/15 text-[#235789] border-none text-[10px] font-black px-3 py-1">
+                                  {review.purpose}
+                                </Badge>
+                              )}
+                              {review.waiting && (
+                                <Badge variant="outline" className="text-[10px] font-black border-emerald-100 text-emerald-600 bg-emerald-50/50 px-3 py-1">
+                                  WAIT: {review.waiting}
+                                </Badge>
+                              )}
+                              {review.visitTime && (
+                                <Badge variant="outline" className="text-[10px] font-black border-blue-100 text-blue-600 bg-blue-50/50 px-3 py-1">
+                                  {review.visitTime}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
-                        )}
-                        {review.rating && (
-                          <div className="flex space-x-0.5">
-                            {Array.from({ length: 5 }).map((_, i) => (
-                              <span key={i} className={`text-sm ${i < (review.rating || 0) ? 'text-amber-400' : 'text-slate-200 dark:text-slate-800'}`}>★</span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
 
-                      <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-lg font-medium pr-0 md:pr-12">
-                        {review.content || "키워드 리뷰만 남겨주셨습니다."}
-                      </p>
-                    </div>
-
-                    <div className="md:w-48 shrink-0">
-                      <button
-                        onClick={() => handleGenerateReply(review, idx)}
-                        disabled={generatingId === `${selectedTab}-${idx}`}
-                        className={`w-full py-4 rounded-2xl text-sm font-black transition-all duration-500 flex items-center justify-center space-x-2 shadow-sm
-                          ${generatingId === `${selectedTab}-${idx}`
-                            ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
-                            : 'bg-indigo-600 hover:bg-indigo-700 text-white hover:shadow-indigo-500/25 hover:-translate-y-1'
-                          }`}
-                      >
-                        {generatingId === `${selectedTab}-${idx}` ? (
-                          <span className="flex items-center space-x-2">
-                            <span className="w-4 h-4 border-2 border-indigo-300 border-t-transparent rounded-full animate-spin"></span>
-                            <span>작성 중</span>
-                          </span>
-                        ) : (
-                          <>
-                            <Icons.AI />
-                            <span>AI 맞춤 작성</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Enhanced AI Recommendation Area */}
-                  {generatedReplies[`${selectedTab}-${idx}`] && (
-                    <div className="mt-8 p-8 bg-indigo-500/5 dark:bg-indigo-500/10 border border-indigo-100/50 dark:border-indigo-900/50 rounded-[2rem] animate-in fade-in slide-in-from-top-4 duration-700">
-                      <div className="flex items-center justify-between mb-6">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
-                            <Icons.AI />
+                          <div className="relative pl-6 py-1">
+                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary/20 via-primary/5 to-transparent rounded-full shadow-sm" />
+                            <p className="text-foreground/90 text-[17px] leading-relaxed font-medium md:max-w-xl">
+                              {review.content || "이 리뷰에는 텍스트 내용이 포함되어 있지 않습니다."}
+                            </p>
                           </div>
-                          <div>
-                            <h4 className="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">Assistant Draft</h4>
-                            <p className="text-[10px] text-slate-400">문맥을 고려한 사장님 전용 답글입니다.</p>
-                          </div>
+                        </div>
+
+                        <div className="md:w-56 shrink-0 flex flex-col justify-center">
+                          <Button
+                            onClick={() => handleGenerateReply(review, idx)}
+                            disabled={generatingId === `${selectedTab}-${idx}`}
+                            className="w-full h-14 rounded-2xl text-sm font-black tracking-tight shadow-lg shadow-primary/10 hover:shadow-primary/25 hover:-translate-y-1 active:translate-y-0 transition-all duration-300"
+                          >
+                            {generatingId === `${selectedTab}-${idx}` ? (
+                              <div className="flex items-center gap-2">
+                                <Clock className="w-4 h-4 animate-spin" /> Analyzing...
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <Zap className="w-4 h-4" /> AI Compose Reply
+                              </div>
+                            )}
+                          </Button>
                         </div>
                       </div>
 
-                      <textarea
-                        value={generatedReplies[`${selectedTab}-${idx}`]}
-                        onChange={(e) => setGeneratedReplies(prev => ({ ...prev, [`${selectedTab}-${idx}`]: e.target.value }))}
-                        className="w-full bg-transparent text-slate-700 dark:text-slate-200 border-none focus:ring-0 p-0 mb-8 resize-none min-h-[140px] text-lg font-medium leading-relaxed leading-extra-loose"
-                      />
+                      {/* AI Result Area */}
+                      {generatedReplies[`${selectedTab}-${idx}`] && (
+                        <div className="mt-10 p-8 bg-primary/[0.03] rounded-[1.5rem] border border-primary/5 animate-in zoom-in-95 duration-500">
+                          <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-primary-foreground shadow-lg">
+                                <Zap className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <h4 className="text-xs font-black uppercase tracking-widest text-primary">Intelligence Draft</h4>
+                                <p className="text-[10px] text-muted-foreground font-bold">Refined by AutoResponse AI</p>
+                              </div>
+                            </div>
+                            <Button variant="ghost" size="icon" className="rounded-full hover:bg-primary/10" onClick={() => copyToClipboard(generatedReplies[`${selectedTab}-${idx}`])}>
+                              <Copy className="w-4 h-4 text-primary" />
+                            </Button>
+                          </div>
 
-                      <div className="flex flex-col sm:flex-row gap-3">
-                        <button
-                          onClick={() => {
-                            copyToClipboard(generatedReplies[`${selectedTab}-${idx}`]);
-                            alert('답글이 클립보드에 복사되었습니다! ✨');
-                          }}
-                          className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 py-4 rounded-2xl text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm active:scale-95"
-                        >
-                          완성본 복사하기
-                        </button>
-                        <a
-                          href={selectedTab === 'naver' ? naverReviewUrl : kakaoReviewUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex-1 bg-indigo-600 text-white py-4 rounded-2xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20 text-center active:scale-95"
-                        >
-                          붙여넣으러 가기
-                        </a>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))
-            ) : (
-              <div className="text-center py-32 glass rounded-[2.5rem]">
-                <div className="w-20 h-20 bg-slate-50 dark:bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Icons.Tag />
-                </div>
-                <h3 className="text-xl font-bold text-slate-400 mb-2">아직 수집된 리뷰가 없습니다</h3>
-                <p className="text-slate-400 text-sm">스크래퍼를 실행하여 실시간 리뷰를 가져오세요.</p>
+                          <textarea
+                            value={generatedReplies[`${selectedTab}-${idx}`]}
+                            onChange={(e) => setGeneratedReplies(prev => ({ ...prev, [`${selectedTab}-${idx}`]: e.target.value }))}
+                            className="w-full bg-transparent text-foreground text-lg font-medium leading-loose resize-none min-h-[120px] focus:outline-none"
+                          />
+
+                          <div className="grid grid-cols-2 gap-3 mt-8">
+                            <Button
+                              variant="outline"
+                              onClick={() => {
+                                copyToClipboard(generatedReplies[`${selectedTab}-${idx}`]);
+                                alert('Copied to clipboard!');
+                              }}
+                              className="h-14 rounded-xl border-dashed border-primary/20 hover:bg-primary/5 font-bold transition-all"
+                            >
+                              Copy Draft
+                            </Button>
+                            <Button
+                              asChild
+                              className="h-14 rounded-xl font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
+                            >
+                              <a href={selectedTab === 'naver' ? naverReviewUrl : kakaoReviewUrl} target="_blank" rel="noopener noreferrer">
+                                Post Reply <ExternalLink className="ml-2 w-4 h-4" />
+                              </a>
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </Card>
+                  ))
+                ) : (
+                  <div className="text-center py-40 glass rounded-[2rem]">
+                    <ArrowRight className="w-12 h-12 text-muted mx-auto mb-6 opacity-20" />
+                    <h3 className="text-xl font-bold text-muted-foreground tracking-tight">Stream is currently empty</h3>
+                    <p className="text-muted text-sm mt-2">Initialize scraper to fetch real-time data.</p>
+                  </div>
+                )}
               </div>
             )}
-          </div>
-        )}
+          </TabsContent>
+        </Tabs>
       </main>
 
-      <footer className="max-w-5xl mx-auto mt-24 pb-12 text-center text-slate-400 text-xs font-medium tracking-widest uppercase">
-        © 2026 AutoResponse. Developed with Care.
+      <footer className="container max-w-5xl mx-auto mt-32 border-t border-muted/30 pt-12 flex flex-col md:flex-row items-center justify-between gap-6 text-muted-foreground">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-black">A</div>
+          <span className="text-[12px] font-black uppercase tracking-widest text-foreground">AutoResponse</span>
+        </div>
+        <p className="text-[11px] font-bold uppercase tracking-[0.2em]">© 2026 INTELLIGENCE BY DOYUNAMIC-KWON</p>
       </footer>
     </div>
   );
