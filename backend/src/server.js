@@ -49,42 +49,53 @@ app.get('/api/reviews', async (req, res) => {
 });
 
 // AI Reply Generation Endpoint
+// AI Reply Generation Endpoint
 app.post('/api/generate-reply', async (req, res) => {
-    const { content, source, reviewer, waiting, purpose, visitTime, booking, reviewType } = req.body;
+    const { content, source, reviewer, waiting, purpose, visitTime, booking, reviewType, style = 'warm' } = req.body;
 
     if (!content && !purpose) {
         return res.status(400).json({ error: "Review content or context is required" });
     }
 
     try {
-        const persona = "친절하고 세심한 카페 사장님. 따뜻한 말투를 사용하며, 손님의 리뷰 내용 중 구체적인 부분(맛, 서비스, 분위기 등)을 언급하며 감사 인사를 전함. 특히 손님의 방문 상황(시간대, 누구와 왔는지, 대기 여부 등)을 파악하여 맞춤형으로 응대함. 마지막에는 꼭 재방문을 바라는 멘트를 넣음.";
+        const personas = {
+            warm: "햇살처럼 따뜻하고 친절한 카페 사장님. '온기'와 '정성'을 중요하게 생각하며, 손님의 리뷰를 하나하나 깊이 공감하고 배려하는 말투(예: ~하셨군요, ~덕분에 저희도 행복했습니다)를 사용함.",
+            professional: "신뢰감을 주는 냉철하면서도 예의 바른 매니저. 군더더기 없이 깔끔하고 전문적인 문체(예: ~입니다, ~하겠습니다)를 사용하여 브랜드의 신뢰도를 높임.",
+            energetic: "에너지가 넘치고 위트 있는 사장님. 느낌표(!)와 이모지를 적절히 사용하여 손님에게 활기를 전달하고 친근하게 소통함(예: 우와! 정말 감사합니다!)"
+        };
+
+        const selectedPersona = personas[style] || personas.warm;
 
         const contextInfo = [];
         if (visitTime) contextInfo.push(`방문 시간: ${visitTime}`);
-        if (booking) contextInfo.push(`예약 여부: ${booking}`);
+        if (booking) contextInfo.push(`예약 정보: ${booking}`);
         if (waiting) contextInfo.push(`대기 상황: ${waiting}`);
         if (purpose) contextInfo.push(`방문 목적: ${purpose}`);
-        if (reviewType) contextInfo.push(`리뷰 유형: ${reviewType}`);
+        if (reviewType) contextInfo.push(`인증 유형: ${reviewType}`);
 
-        let userMessageContent = `플랫폼: ${source}\n작성자: ${reviewer || '고객님'}`;
-        if (contextInfo.length > 0) {
-            userMessageContent += `\n상황 정보: ${contextInfo.join(', ')}`;
-        }
-        userMessageContent += `\n리뷰 내용: ${content || '내용 없음 (별점/키워드 리뷰)'}`;
+        const systemMessage = `너는 ${selectedPersona}이야.
+고객이 남긴 리뷰에 대해 '사람이 직접 쓴 것 같은' 따뜻하고 자연스러운 답글을 작성해줘.
+특히 다음 '상황 정보'를 최대한 자연스럽게 문장 속에 녹여내서, 단순히 템플릿을 쓰는 게 아니라는 점을 보여줘.
+(예: "오후에 방문해 주셨는데 대기 없이 바로 입장하셨다니 정말 다행이네요!")
+
+[규칙]
+1. 답변은 한국어로 하고, 3~4문장 정도로 정중하게 작성할 것.
+2. AI인 티가 나지 않도록 로봇 같은 표현이나 지나치게 반복적인 표현은 피할 것.
+3. 리뷰 내용이 없더라도 '상황 정보'를 바탕으로 "방문해 주셔서 감사합니다" 식의 정성스러운 인사를 건넬 것.`;
+
+        const userMessage = `[정보]
+플랫폼: ${source}
+작성자: ${reviewer || '고객님'}
+상황 정보: ${contextInfo.join(', ') || '정보 없음'}
+리뷰 내용: ${content || '내용 없음 (키워드/별점 리뷰)'}`;
 
         const response = await openai.chat.completions.create({
             model: "gpt-4o",
             messages: [
-                {
-                    role: "system",
-                    content: `너는 ${persona}이야. 고객이 남긴 리뷰에 대해 정성스러운 답글을 작성해줘. 답변은 한국어로 하고, 너무 길지 않게 3~4문장 정도로 작성해줘.`
-                },
-                {
-                    role: "user",
-                    content: userMessageContent
-                }
+                { role: "system", content: systemMessage },
+                { role: "user", content: userMessage }
             ],
-            temperature: 0.7,
+            temperature: 0.8,
         });
 
         const reply = response.choices[0].message.content;
