@@ -59,6 +59,8 @@ export default function Home() {
   const [insightsLoading, setInsightsLoading] = useState(false);
   const [syncLogs, setSyncLogs] = useState<string[]>([]);
   const [showSyncDialog, setShowSyncDialog] = useState(false);
+  const [notifications, setNotifications] = useState<{ id: string, message: string, time: string }[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   // Load Saved IDs
   useEffect(() => {
@@ -105,6 +107,11 @@ export default function Home() {
   useEffect(() => {
     fetchReviews();
     fetchInsights();
+
+    // Request notification permission
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
   }, [isSyncing, selectedTab]);
 
   const handleSync = async () => {
@@ -117,7 +124,20 @@ export default function Home() {
 
     eventSource.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      setSyncLogs(prev => [...prev.slice(-10), data.message]); // Keep last 10 logs for readability
+      setSyncLogs(prev => [...prev.slice(-10), data.message]);
+
+      if (data.type === 'alert') {
+        const newNotif = {
+          id: Date.now().toString(),
+          message: data.message,
+          time: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+        };
+        setNotifications(prev => [newNotif, ...prev]);
+        // Trigger browser notification if permission granted
+        if (Notification.permission === "granted") {
+          new Notification("AutoResponse Alert", { body: data.message });
+        }
+      }
 
       if (data.type === 'done') {
         eventSource.close();
@@ -208,7 +228,7 @@ export default function Home() {
           From analytics to AI replies, all in one place.
         </p>
 
-        <div className="mt-10 flex justify-center gap-4">
+        <div className="mt-10 flex justify-center gap-4 relative">
           <Dialog>
             <DialogTrigger asChild>
               <Button variant="outline" className="h-12 px-6 rounded-2xl font-bold border-primary/20 hover:bg-primary/5 transition-all">
@@ -295,12 +315,51 @@ export default function Home() {
           </Dialog>
 
           <Button
-            onClick={fetchReviews}
+            onClick={() => {
+              fetchReviews();
+              fetchInsights();
+            }}
             variant="ghost"
             className="h-12 px-6 rounded-2xl font-bold text-muted-foreground hover:text-primary transition-all"
           >
             Refresh List
           </Button>
+
+          {/* Notification Button */}
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowNotifications(!showNotifications)}
+              className={`h-12 w-12 rounded-2xl transition-all ${notifications.length > 0 ? "text-red-500 hover:text-red-600 bg-red-50/50" : "text-muted-foreground"}`}
+            >
+              <Zap className={`w-5 h-5 ${notifications.length > 0 ? "animate-pulse" : ""}`} />
+              {notifications.length > 0 && (
+                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-background" />
+              )}
+            </Button>
+
+            {showNotifications && (
+              <div className="absolute top-14 right-0 w-80 glass rounded-3xl p-6 shadow-2xl z-50 border border-primary/10 animate-in fade-in slide-in-from-top-2">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-black text-sm uppercase tracking-widest text-foreground">Alert Center</h3>
+                  <Button variant="ghost" size="sm" onClick={() => setNotifications([])} className="text-[10px] font-bold">Clear All</Button>
+                </div>
+                <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
+                  {notifications.length > 0 ? (
+                    notifications.map((n) => (
+                      <div key={n.id} className="p-4 bg-red-50/50 rounded-2xl border border-red-100/50 animate-in slide-in-from-right-2">
+                        <p className="text-xs font-bold text-red-600 leading-relaxed mb-1">{n.message}</p>
+                        <span className="text-[9px] font-black text-red-400 uppercase">{n.time}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-center py-8 text-xs font-bold text-muted-foreground">No recent alerts found.</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 

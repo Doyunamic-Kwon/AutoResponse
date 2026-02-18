@@ -215,11 +215,37 @@ app.post('/api/sync', async (req, res) => {
         broadcast({ type: 'error', message });
     });
 
-    scraper.on('close', (code) => {
+    scraper.on('close', async (code) => {
         console.log(`[SCRAPER] Process exited with code ${code}`);
+
+        let alertsFound = 0;
+        if (code === 0) {
+            try {
+                // Scan for negative reviews in the latest file
+                const files = await fs.readdir(dataDir);
+                const jsonFiles = files.filter(f => f.endsWith('.json') && f.startsWith('reviews_'));
+                jsonFiles.sort().reverse();
+                const latestData = await fs.readJson(path.join(dataDir, jsonFiles[0]));
+                const allReviews = [...(latestData.naver || []), ...(latestData.kakao || [])];
+
+                const negativeReviews = allReviews.filter(r => r.rating && r.rating <= 3);
+                alertsFound = negativeReviews.length;
+
+                if (alertsFound > 0) {
+                    broadcast({
+                        type: 'alert',
+                        message: `⚠️ Critical: ${alertsFound} negative reviews detected!`,
+                        count: alertsFound
+                    });
+                }
+            } catch (err) {
+                console.error("[ALERT CHECK ERR]", err);
+            }
+        }
+
         broadcast({
             type: 'done',
-            message: code === 0 ? '✅ Sync completed successfully!' : `❌ Scraper exited with code ${code}`,
+            message: code === 0 ? `✅ Sync completed! (${alertsFound} critical reviews found)` : `❌ Scraper exited with code ${code}`,
             success: code === 0
         });
     });
