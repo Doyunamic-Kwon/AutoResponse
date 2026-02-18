@@ -23,6 +23,8 @@ export const metadata: Metadata = {
   description: "실시간 리뷰 관리 및 AI 맞춤 답글 플랫폼",
 };
 
+import { NextAuthProvider } from "@/components/providers/session-provider";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -31,7 +33,9 @@ export default function RootLayout({
   return (
     <html lang="ko" className={`${outfit.variable} ${inter.variable} ${dmSerif.variable}`}>
       <body className="antialiased">
-        {children}
+        <NextAuthProvider>
+          {children}
+        </NextAuthProvider>
       </body>
     </html>
   );

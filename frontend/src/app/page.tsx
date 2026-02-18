@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSession, signIn, signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -51,7 +53,7 @@ export default function Home() {
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [generatedReplies, setGeneratedReplies] = useState<{ [key: string]: string }>({});
   const [replyStyle, setReplyStyle] = useState<'warm' | 'professional' | 'energetic'>('warm');
-  const [storeIds, setStoreIds] = useState({ naver: '34016603', kakao: '26338954' });
+  const [storeIds, setStoreIds] = useState({ naver: '', kakao: '' });
   const [isSyncing, setIsSyncing] = useState(false);
   const [filterRating, setFilterRating] = useState<number | 'all'>('all');
   const [sortBy, setSortBy] = useState<'latest' | 'rating-low' | 'rating-high'>('latest');
@@ -62,18 +64,33 @@ export default function Home() {
   const [notifications, setNotifications] = useState<{ id: string, message: string, time: string }[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
 
-  // Load Saved IDs
-  useEffect(() => {
-    const saved = localStorage.getItem('autoResponse_storeIds');
-    if (saved) {
-      setStoreIds(JSON.parse(saved));
-    }
-  }, []);
+  const { data: session, status } = useSession();
+  const router = useRouter();
 
-  // Save IDs
+  // Redirect if not authenticated
   useEffect(() => {
-    localStorage.setItem('autoResponse_storeIds', JSON.stringify(storeIds));
-  }, [storeIds]);
+    if (status === "unauthenticated") {
+      router.push("/auth/signin");
+    }
+  }, [status, router]);
+
+  // Load Saved IDs from DB
+  useEffect(() => {
+    const loadStoreIds = async () => {
+      if (status === "authenticated") {
+        try {
+          const res = await fetch('/api/store');
+          const data = await res.json();
+          if (data.naverId || data.kakaoId) {
+            setStoreIds({ naver: data.naverId || '', kakao: data.kakaoId || '' });
+          }
+        } catch (error) {
+          console.error('Failed to load store IDs from DB:', error);
+        }
+      }
+    };
+    loadStoreIds();
+  }, [status]);
 
   const fetchReviews = async () => {
     setLoading(true);
@@ -154,10 +171,18 @@ export default function Home() {
     };
 
     try {
+      // Trigger Scraper
       await fetch('http://localhost:4000/api/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(storeIds)
+      });
+
+      // Save to DB
+      await fetch('/api/store', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ naverId: storeIds.naver, kakaoId: storeIds.kakao })
       });
     } catch (error) {
       console.error('Sync trigger failed:', error);
@@ -213,9 +238,41 @@ export default function Home() {
   const naverReviewUrl = `https://pcmap.place.naver.com/restaurant/${storeIds.naver}/review/visitor`;
   const kakaoReviewUrl = `https://place.map.kakao.com/${storeIds.kakao}`;
 
+  if (status === "loading") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-10 h-10 animate-spin text-primary" />
+          <p className="text-sm font-black uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Authenticating Presence...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/10 transition-colors duration-500 pb-20">
       <header className="container max-w-5xl mx-auto pt-16 pb-12 text-center animate-in fade-in slide-in-from-top-4 duration-1000">
+        <div className="flex justify-between items-center mb-10 pb-6 border-b border-primary/5">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-primary/10 overflow-hidden border border-primary/10">
+              {session?.user?.image ? (
+                <img src={session.user.image} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center font-bold text-primary">
+                  {session?.user?.name?.[0] || 'U'}
+                </div>
+              )}
+            </div>
+            <div className="text-left">
+              <p className="text-xs font-black uppercase tracking-widest text-primary">Logged in as</p>
+              <p className="text-sm font-bold">{session?.user?.name || session?.user?.email}</p>
+            </div>
+          </div>
+          <Button variant="ghost" onClick={() => signOut()} className="text-xs font-black uppercase tracking-widest text-muted-foreground hover:text-red-500">
+            Sign Out
+          </Button>
+        </div>
+
         <div className="inline-flex items-center px-4 py-1.5 mb-6 text-[10px] font-bold tracking-widest uppercase bg-primary/5 text-primary border border-primary/10 rounded-full">
           <Zap className="w-3 h-3 mr-2" />
           Intelligent Reputation Care
