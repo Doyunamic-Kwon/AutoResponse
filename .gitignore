@@ -33,4 +33,5 @@ scraper/screenshots/
 *.html
 *.json
 !package.json
-!scraper/package.json
+# Project Roadmap
+ROADMAP.md
