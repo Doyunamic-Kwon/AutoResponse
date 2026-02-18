@@ -106,6 +106,88 @@ app.post('/api/generate-reply', async (req, res) => {
     }
 });
 
+// AI Insights Endpoint
+app.get('/api/insights', async (req, res) => {
+    try {
+        const files = await fs.readdir(dataDir);
+        const jsonFiles = files.filter(f => f.endsWith('.json') && f.startsWith('reviews_'));
+
+        if (jsonFiles.length === 0) {
+            return res.json({ summary: "데이터가 없습니다.", keywords: [] });
+        }
+
+        jsonFiles.sort().reverse();
+        const latestFile = path.join(dataDir, jsonFiles[0]);
+        const data = await fs.readJson(latestFile);
+
+        const allReviews = [...(data.naver || []), ...(data.kakao || [])];
+        const textToAnalyze = allReviews
+            .filter(r => r.content && r.content.length > 5)
+            .map(r => `[평점: ${r.rating}] ${r.content}`)
+            .slice(0, 20) // Limit to latest 20 for token saving
+            .join('\n');
+
+        if (!textToAnalyze) {
+            return res.json({
+                summary: "분석할 텍스트 리뷰가 아직 충분하지 않습니다.",
+                keywords: ["데이터 부족"]
+            });
+        }
+
+        const response = await openai.chat.completions.create({
+            model: "gpt-4o",
+            messages: [
+                {
+                    role: "system",
+                    content: "너는 식당 평판 분석 전문가야. 제공된 리뷰들을 분석해서 '매장의 현재 상태 한줄 요약'과 '핵심 키워드 5개'를 추출해줘. 키워드는 긍정/부정 섞어서 가장 두드러지는 것으로 뽑아줘. JSON 형식으로 응답해: { \"summary\": \"string\", \"keywords\": [\"string\"] }"
+                },
+                { role: "user", content: `리뷰 데이터:\n${textToAnalyze}` }
+            ],
+            response_format: { type: "json_object" },
+            temperature: 0.7,
+        });
+
+        const insights = JSON.parse(response.choices[0].message.content);
+        res.json(insights);
+    } catch (error) {
+        console.error("Insight Generation Error:", error);
+        res.status(500).json({ error: "인사이트 생성 실패" });
+    }
+});
+
+// Real-time Sync Endpoint (Trigger Scraper)
+app.post('/api/sync', async (req, res) => {
+    const { naver, kakao, naverId, kakaoId } = req.body;
+
+    // Support both field name styles for backward compatibility
+    const nId = naver || naverId;
+    const kId = kakao || kakaoId;
+
+    if (!nId || !kId) {
+        return res.status(400).json({ error: "Both Naver and Kakao IDs are required" });
+    }
+
+    const { exec } = require('child_process');
+    const scraperPath = path.join(__dirname, '../../scraper/src/main.js');
+
+    console.log(`[BACKEND] Triggering sync for Naver: ${nId}, Kakao: ${kId}`);
+
+    // Run scraper in the background
+    exec(`node ${scraperPath} ${nId} ${kId}`, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`[SCRAPER ERROR] ${error.message}`);
+            return;
+        }
+        if (stderr) {
+            console.error(`[SCRAPER STDERR] ${stderr}`);
+        }
+        console.log(`[SCRAPER STDOUT] ${stdout}`);
+    });
+
+    // Respond immediately that sync started
+    res.json({ message: "Sync started in background. Please refresh in a few moments." });
+});
+
 if (process.env.NODE_ENV !== 'test') {
     app.listen(PORT, () => {
         console.log(`[BACKEND] Server is running on http://localhost:${PORT}`);
