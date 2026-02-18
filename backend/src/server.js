@@ -155,11 +155,37 @@ app.get('/api/insights', async (req, res) => {
     }
 });
 
+// SSE Clients collection
+let clients = [];
+
+// Broadcast to all connected clients
+const broadcast = (data) => {
+    clients.forEach(client => client.res.write(`data: ${JSON.stringify(data)}\n\n`));
+};
+
+// SSE Streaming Endpoint
+app.get('/api/sync-stream', (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+
+    const clientId = Date.now();
+    const newClient = { id: clientId, res };
+    clients.push(newClient);
+
+    console.log(`[SSE] Client connected: ${clientId}`);
+
+    req.on('close', () => {
+        console.log(`[SSE] Client disconnected: ${clientId}`);
+        clients = clients.filter(c => c.id !== clientId);
+    });
+});
+
 // Real-time Sync Endpoint (Trigger Scraper)
 app.post('/api/sync', async (req, res) => {
     const { naver, kakao, naverId, kakaoId } = req.body;
 
-    // Support both field name styles for backward compatibility
     const nId = naver || naverId;
     const kId = kakao || kakaoId;
 
@@ -167,25 +193,38 @@ app.post('/api/sync', async (req, res) => {
         return res.status(400).json({ error: "Both Naver and Kakao IDs are required" });
     }
 
-    const { exec } = require('child_process');
+    const { spawn } = require('child_process');
     const scraperPath = path.join(__dirname, '../../scraper/src/main.js');
 
-    console.log(`[BACKEND] Triggering sync for Naver: ${nId}, Kakao: ${kId}`);
+    console.log(`[BACKEND] Triggering live sync for Naver: ${nId}, Kakao: ${kId}`);
+    broadcast({ type: 'status', message: '🚀 Scraper initialized...' });
 
-    // Run scraper in the background
-    exec(`node ${scraperPath} ${nId} ${kId}`, (error, stdout, stderr) => {
-        if (error) {
-            console.error(`[SCRAPER ERROR] ${error.message}`);
-            return;
+    const scraper = spawn('node', [scraperPath, nId, kId]);
+
+    scraper.stdout.on('data', (data) => {
+        const message = data.toString().trim();
+        if (message) {
+            console.log(`[SCRAPER] ${message}`);
+            broadcast({ type: 'log', message });
         }
-        if (stderr) {
-            console.error(`[SCRAPER STDERR] ${stderr}`);
-        }
-        console.log(`[SCRAPER STDOUT] ${stdout}`);
     });
 
-    // Respond immediately that sync started
-    res.json({ message: "Sync started in background. Please refresh in a few moments." });
+    scraper.stderr.on('data', (data) => {
+        const message = data.toString().trim();
+        console.error(`[SCRAPER ERR] ${message}`);
+        broadcast({ type: 'error', message });
+    });
+
+    scraper.on('close', (code) => {
+        console.log(`[SCRAPER] Process exited with code ${code}`);
+        broadcast({
+            type: 'done',
+            message: code === 0 ? '✅ Sync completed successfully!' : `❌ Scraper exited with code ${code}`,
+            success: code === 0
+        });
+    });
+
+    res.json({ message: "Scraper process started." });
 });
 
 if (process.env.NODE_ENV !== 'test') {

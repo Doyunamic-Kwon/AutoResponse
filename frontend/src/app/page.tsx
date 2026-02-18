@@ -57,6 +57,8 @@ export default function Home() {
   const [sortBy, setSortBy] = useState<'latest' | 'rating-low' | 'rating-high'>('latest');
   const [insights, setInsights] = useState<{ summary: string, keywords: string[] }>({ summary: '', keywords: [] });
   const [insightsLoading, setInsightsLoading] = useState(false);
+  const [syncLogs, setSyncLogs] = useState<string[]>([]);
+  const [showSyncDialog, setShowSyncDialog] = useState(false);
 
   // Load Saved IDs
   useEffect(() => {
@@ -107,21 +109,40 @@ export default function Home() {
 
   const handleSync = async () => {
     setIsSyncing(true);
+    setSyncLogs(['Connecting to scraper stream...']);
+    setShowSyncDialog(true);
+
+    // Setup SSE connection
+    const eventSource = new EventSource('http://localhost:4000/api/sync-stream');
+
+    eventSource.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      setSyncLogs(prev => [...prev.slice(-10), data.message]); // Keep last 10 logs for readability
+
+      if (data.type === 'done') {
+        eventSource.close();
+        setIsSyncing(false);
+        fetchReviews();
+        fetchInsights();
+      }
+    };
+
+    eventSource.onerror = (err) => {
+      console.error('SSE Error:', err);
+      eventSource.close();
+      setIsSyncing(false);
+    };
+
     try {
-      const res = await fetch('http://localhost:4000/api/sync', {
+      await fetch('http://localhost:4000/api/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(storeIds)
       });
-      const data = await res.json();
-      alert(data.message);
-
-      setTimeout(() => {
-        setIsSyncing(false);
-      }, 5000);
     } catch (error) {
-      console.error('Sync failed:', error);
+      console.error('Sync trigger failed:', error);
       setIsSyncing(false);
+      eventSource.close();
     }
   };
 
@@ -231,6 +252,45 @@ export default function Home() {
                   Save and Sync Reviews
                 </Button>
               </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={showSyncDialog} onOpenChange={setShowSyncDialog}>
+            <DialogContent className="sm:max-w-[500px] rounded-[2.5rem] bg-zinc-950 text-white border-zinc-800 p-8">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-black font-outfit flex items-center gap-3">
+                  {isSyncing ? <Loader2 className="w-6 h-6 animate-spin text-primary" /> : <CheckCircle2 className="w-6 h-6 text-emerald-500" />}
+                  {isSyncing ? "Synchronizing Platform Data" : "Synchronization Complete"}
+                </DialogTitle>
+                <DialogDescription className="text-zinc-400 font-medium pt-2">
+                  Capturing real-time review streams from Naver and Kakao.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="mt-8 p-6 bg-white/5 rounded-2xl border border-white/5 font-mono text-[11px] leading-relaxed overflow-hidden">
+                <div className="flex flex-col gap-1">
+                  {syncLogs.map((log, i) => (
+                    <div key={i} className="flex gap-3">
+                      <span className="text-zinc-600">[{new Date().toLocaleTimeString()}]</span>
+                      <span className={log.includes('✅') ? "text-emerald-400 font-bold" : "text-zinc-300"}>{log}</span>
+                    </div>
+                  ))}
+                  {isSyncing && (
+                    <div className="flex gap-2 items-center text-primary animate-pulse mt-2">
+                      <span className="w-1.5 h-1.5 bg-primary rounded-full" />
+                      <span>Awaiting next stream packet...</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {!isSyncing && (
+                <Button
+                  onClick={() => setShowSyncDialog(false)}
+                  className="w-full mt-8 h-14 rounded-xl font-black bg-white text-black hover:bg-zinc-200">
+                  Return to Dashboard
+                </Button>
+              )}
             </DialogContent>
           </Dialog>
 
