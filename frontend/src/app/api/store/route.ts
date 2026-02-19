@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../auth/[...nextauth]/route";
-import { prisma } from "../../../lib/prisma"; // Relative path for Vercel
+import { prisma } from "../../../lib/prisma"; // VER_103_RELATIVE
 
 export async function GET() {
     const session = await getServerSession(authOptions);
