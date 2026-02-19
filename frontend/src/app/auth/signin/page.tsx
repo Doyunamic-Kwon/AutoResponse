@@ -22,6 +22,13 @@ export default function SignIn() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <Button
+                        onClick={() => signIn("credentials", { email: "test@example.com", callbackUrl: "/" })}
+                        variant="secondary"
+                        className="w-full h-14 rounded-2xl font-black uppercase tracking-widest text-primary transition-all hover:-translate-y-1 bg-primary/10 hover:bg-primary/20 border-none"
+                    >
+                        Enter as Test Boss
+                    </Button>
+                    <Button
                         onClick={() => signIn("kakao", { callbackUrl: "/" })}
                         className="w-full h-14 rounded-2xl bg-[#FEE500] hover:bg-[#FEE500]/90 text-zinc-900 font-bold border-none transition-all hover:-translate-y-1"
                     >

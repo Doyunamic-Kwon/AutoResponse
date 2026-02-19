@@ -92,10 +92,12 @@ export default function Home() {
     loadStoreIds();
   }, [status]);
 
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
   const fetchReviews = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:4000/api/reviews');
+      const res = await fetch(`${API_URL}/api/reviews`);
       const data = await res.json();
       setReviews({
         naver: data.naver || [],
@@ -111,7 +113,7 @@ export default function Home() {
   const fetchInsights = async () => {
     setInsightsLoading(true);
     try {
-      const res = await fetch('http://localhost:4000/api/insights');
+      const res = await fetch(`${API_URL}/api/insights`);
       const data = await res.json();
       setInsights(data);
     } catch (error) {
@@ -137,7 +139,7 @@ export default function Home() {
     setShowSyncDialog(true);
 
     // Setup SSE connection
-    const eventSource = new EventSource('http://localhost:4000/api/sync-stream');
+    const eventSource = new EventSource(`${API_URL}/api/sync-stream`);
 
     eventSource.onmessage = (event) => {
       const data = JSON.parse(event.data);
@@ -172,7 +174,7 @@ export default function Home() {
 
     try {
       // Trigger Scraper
-      await fetch('http://localhost:4000/api/sync', {
+      await fetch(`${API_URL}/api/sync`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(storeIds)
@@ -195,7 +197,7 @@ export default function Home() {
     const key = `${selectedTab}-${idx}`;
     setGeneratingId(key);
     try {
-      const res = await fetch('http://localhost:4000/api/generate-reply', {
+      const res = await fetch(`${API_URL}/api/generate-reply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...review, style: replyStyle })

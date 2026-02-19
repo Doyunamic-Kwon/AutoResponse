@@ -10,7 +10,7 @@ chromium.use(stealth());
  */
 async function createBrowser() {
     const browser = await chromium.launch({
-        headless: false, // Set to true for production, false for debugging
+        headless: process.env.HEADLESS !== 'false', // Default to true for production (server environments)
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
@@ -32,7 +32,7 @@ async function createBrowser() {
     const page = await context.newPage();
 
     // Randomize mouse movements slightly to appear more human-like (will be implemented in scrapers)
-    
+
     return { browser, context, page };
 }
 

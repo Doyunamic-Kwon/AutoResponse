@@ -13,7 +13,15 @@ const openai = new OpenAI({
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-app.use(cors());
+// CORS configuration
+const corsOptions = {
+    origin: process.env.FRONTEND_URL || '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(morgan('dev'));
 

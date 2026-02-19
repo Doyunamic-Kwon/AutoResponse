@@ -5,6 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node src/server.js",
+    "install-scraper": "cd ../scraper && npm install",
+    "build": "npm install && npm run install-scraper",
     "test": "jest --detectOpenHandles"
   },
   "keywords": [],
