@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   description: "실시간 리뷰 관리 및 AI 맞춤 답글 플랫폼",
 };
 
-import { NextAuthProvider } from "@/components/providers/session-provider";
+import { NextAuthProvider } from "../components/providers/session-provider";
 
 export default function RootLayout({
   children,
