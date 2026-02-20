@@ -1,5 +1,5 @@
 # Playwright가 포함된 공식 이미지를 사용하여 브라우저 의존성 문제를 해결합니다.
-FROM mcr.microsoft.com/playwright:v1.49.0-noble
+FROM mcr.microsoft.com/playwright:v1.50.1-noble
 
 # 작업 디렉토리 설정
 WORKDIR /app
