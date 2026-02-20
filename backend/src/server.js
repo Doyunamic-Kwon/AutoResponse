@@ -44,7 +44,8 @@ app.use(morgan('dev'));
 
 // Paths
 const dataDir = path.join(__dirname, '../../scraper/data');
-console.log(`[BACKEND] Data directory: ${dataDir}`);
+fs.ensureDirSync(dataDir); // Ensure directory exists on startup
+console.log(`[BACKEND] Data directory initialized at: ${dataDir}`);
 
 // Routes preview
 app.get('/', (req, res) => {
@@ -54,6 +55,9 @@ app.get('/', (req, res) => {
 // Endpoint to get the latest reviews
 app.get('/api/reviews', async (req, res) => {
     try {
+        if (!fs.existsSync(dataDir)) {
+            return res.json({ reviews: [], message: "No data directory found." });
+        }
         const files = await fs.readdir(dataDir);
         const jsonFiles = files.filter(f => f.endsWith('.json') && f.startsWith('reviews_'));
 
@@ -134,6 +138,9 @@ app.post('/api/generate-reply', async (req, res) => {
 // AI Insights Endpoint
 app.get('/api/insights', async (req, res) => {
     try {
+        if (!fs.existsSync(dataDir)) {
+            return res.json({ summary: "데이터가 없습니다.", keywords: [] });
+        }
         const files = await fs.readdir(dataDir);
         const jsonFiles = files.filter(f => f.endsWith('.json') && f.startsWith('reviews_'));
 
