@@ -31,7 +31,15 @@ async function createBrowser() {
 
     const page = await context.newPage();
 
-    // Randomize mouse movements slightly to appear more human-like (will be implemented in scrapers)
+    // Optimize: Block unnecessary resources to save memory and speed up
+    await page.route('**/*', (route) => {
+        const type = route.request().resourceType();
+        if (['image', 'font', 'stylesheet', 'media', 'image', 'other'].includes(type)) {
+            route.abort();
+        } else {
+            route.continue();
+        }
+    });
 
     return { browser, context, page };
 }
