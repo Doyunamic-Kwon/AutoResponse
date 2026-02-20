@@ -14,8 +14,25 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 // CORS configuration
+const allowedOrigins = process.env.FRONTEND_URL
+    ? process.env.FRONTEND_URL.split(',').map(url => url.replace(/\/+$/, ''))
+    : ['*'];
+
 const corsOptions = {
-    origin: process.env.FRONTEND_URL || '*',
+    origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+
+        // Clean the incoming origin
+        const cleanOrigin = origin.replace(/\/+$/, '');
+
+        if (allowedOrigins.includes('*') || allowedOrigins.includes(cleanOrigin)) {
+            callback(null, true);
+        } else {
+            console.log(`[CORS] Rejected origin: ${origin}`);
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,

@@ -173,21 +173,21 @@ export default function Home() {
     };
 
     try {
+      // Save to DB first to ensure IDs are persisted
+      await fetch('/api/store', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ naverId: storeIds.naver, kakaoId: storeIds.kakao })
+      });
+
       // Trigger Scraper
       await fetch(`${API_URL}/api/sync`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(storeIds)
       });
-
-      // Save to DB
-      await fetch('/api/store', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ naverId: storeIds.naver, kakaoId: storeIds.kakao })
-      });
     } catch (error) {
-      console.error('Sync trigger failed:', error);
+      console.error('Operation failed:', error);
       setIsSyncing(false);
       eventSource.close();
     }
