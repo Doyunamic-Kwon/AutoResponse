@@ -64,13 +64,22 @@ class KakaoScraper {
             });
 
             await page.goto(this.baseUrl, { waitUntil: 'domcontentloaded' });
-            console.log(`[KAKAO] Page loaded, waiting for review section...`);
+            console.log(`[KAKAO] Page loaded, navigating to review tab...`);
 
-            // Wait a bit for dynamic content
-            await page.waitForTimeout(2000);
+            // Ensure we are on the review tab
+            try {
+                const reviewsTab = await page.$('a[data-id="review"], .link_evaluation');
+                if (reviewsTab) {
+                    await reviewsTab.click();
+                    await page.waitForTimeout(2000);
+                }
+            } catch (e) {
+                console.log("[KAKAO] Failed to click review tab, but continuing...");
+            }
 
             // Scroll down to trigger more API calls
-            // Kakao map lazy loads reviews as you scroll down the review section
+            await page.evaluate(() => window.scrollTo(0, 1000));
+            await page.waitForTimeout(1000);
             await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
             await page.waitForTimeout(1000);
 
@@ -97,6 +106,22 @@ class KakaoScraper {
 
             // Final wait for any pending requests
             await page.waitForTimeout(2000);
+
+            // Fallback: If no reviews intercepted, try extracting from DOM directly
+            if (reviews.length === 0) {
+                console.log("[KAKAO] No reviews intercepted via API. Trying DOM fallback...");
+                const domReviews = await page.evaluate(() => {
+                    const items = document.querySelectorAll('ul.list_evaluation li');
+                    return Array.from(items).map(item => ({
+                        source: 'kakao',
+                        reviewer: item.querySelector('.txt_username')?.innerText || 'Anonymous',
+                        rating: parseInt(item.querySelector('.ico_star.inner_star')?.style.width || '100%') / 20 || 5,
+                        content: item.querySelector('.txt_comment span')?.innerText || '',
+                        date: item.querySelector('.time_write')?.innerText || new Date().toISOString(),
+                    })).filter(r => r.content.length > 0);
+                });
+                reviews.push(...domReviews);
+            }
 
             console.log(`[KAKAO] Extracted total ${reviews.length} reviews.`);
 

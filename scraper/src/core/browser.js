@@ -31,10 +31,10 @@ async function createBrowser() {
 
     const page = await context.newPage();
 
-    // Optimize: Block unnecessary resources to save memory and speed up
+    // Optimize: Block only heavy media resources (images, media, fonts) to save memory while keeping layout intact
     await page.route('**/*', (route) => {
         const type = route.request().resourceType();
-        if (['image', 'font', 'stylesheet', 'media', 'image', 'other'].includes(type)) {
+        if (['image', 'font', 'media'].includes(type)) {
             route.abort();
         } else {
             route.continue();

@@ -36,11 +36,11 @@ class NaverScraper {
 
             // Extract using reliable page.evaluate
             reviews = await page.evaluate((source) => {
-                const items = document.querySelectorAll('li.EjjAW, li.MHaAm');
+                const items = document.querySelectorAll('li.EjjAW, li.MHaAm, li[class*="review_item"]');
                 const results = [];
 
                 items.forEach(item => {
-                    const content = item.querySelector('.z_38Y')?.innerText || '';
+                    const content = item.querySelector('.pui__vn15t2, .z_38Y')?.innerText || '';
                     const reviewer = item.querySelector('.TwuS_')?.innerText || 'Anonymous';
                     const date = item.querySelector('.CKU9p')?.innerText || new Date().toISOString();
 
