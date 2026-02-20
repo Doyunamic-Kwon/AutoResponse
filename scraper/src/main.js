@@ -17,14 +17,14 @@ async function main() {
         timestamp: new Date().toISOString()
     };
 
-    // Run parallel
+    // Run sequentially to save memory on serverless/free tier environments
     try {
-        const [naverReviews, kakaoReviews] = await Promise.all([
-            new NaverScraper(naverId).run(),
-            new KakaoScraper(kakaoId).run()
-        ]);
-
+        console.log(`[MAIN] Fetching Naver reviews...`);
+        const naverReviews = await new NaverScraper(naverId).run();
         results.naver = naverReviews;
+
+        console.log(`[MAIN] Fetching Kakao reviews...`);
+        const kakaoReviews = await new KakaoScraper(kakaoId).run();
         results.kakao = kakaoReviews;
 
         // Save to file

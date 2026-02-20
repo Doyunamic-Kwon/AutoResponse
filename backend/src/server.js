@@ -201,8 +201,14 @@ app.get('/api/sync-stream', (req, res) => {
 
     console.log(`[SSE] Client connected: ${clientId}`);
 
+    // Send keep-alive every 15 seconds
+    const keepAlive = setInterval(() => {
+        res.write(': keep-alive\n\n');
+    }, 15000);
+
     req.on('close', () => {
         console.log(`[SSE] Client disconnected: ${clientId}`);
+        clearInterval(keepAlive);
         clients = clients.filter(c => c.id !== clientId);
     });
 });
