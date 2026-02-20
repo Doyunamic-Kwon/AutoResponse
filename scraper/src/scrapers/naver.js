@@ -22,16 +22,28 @@ class NaverScraper {
                 console.log("[NAVER] Review list selector not found. Retrying with backup...");
             }
 
-            // Scroll and load more
+            // Scroll and load more list items
             console.log("[NAVER] Loading more reviews...");
             for (let i = 0; i < 3; i++) {
                 await page.keyboard.press('End');
                 await page.waitForTimeout(1000);
-                const moreBtn = await page.$('a.dP0sq'); // "더보기" button
-                if (moreBtn && await moreBtn.isVisible()) {
-                    await moreBtn.click();
+                const listMoreBtn = await page.$('a.dP0sq');
+                if (listMoreBtn && await listMoreBtn.isVisible()) {
+                    await listMoreBtn.click();
                     await page.waitForTimeout(1500);
                 }
+            }
+
+            // Expand individual long reviews (the "More" button inside review text)
+            console.log("[NAVER] Expanding long reviews...");
+            const expandButtons = await page.$$('.pui__vn15t2 span:has-text("더보기"), .rv8_S');
+            for (const btn of expandButtons) {
+                try {
+                    if (await btn.isVisible()) {
+                        await btn.click();
+                        await page.waitForTimeout(200);
+                    }
+                } catch (e) { /* ignore safe errors */ }
             }
 
             // Extract using reliable page.evaluate
@@ -40,7 +52,8 @@ class NaverScraper {
                 const results = [];
 
                 items.forEach(item => {
-                    const content = item.querySelector('.pui__vn15t2, .z_38Y')?.innerText || '';
+                    let content = item.querySelector('.pui__vn15t2, .z_38Y')?.innerText || '';
+                    content = content.replace(/접기|더보기/g, '').trim();
                     const reviewer = item.querySelector('.TwuS_')?.innerText || 'Anonymous';
                     const date = item.querySelector('.CKU9p')?.innerText || new Date().toISOString();
 
